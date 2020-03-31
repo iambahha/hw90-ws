@@ -22,7 +22,7 @@ app.ws('/square', (ws, req) => {
 
 
   ws.send(JSON.stringify({
-    type: 'ALL_CIRCLES',
+    type: 'ALL_SQUARES',
     squares: squares
   }));
 
@@ -63,4 +63,3 @@ app.ws('/square', (ws, req) => {
 app.listen(port, () => {
   console.log(`Server started on ${port} port!`);
 });
-

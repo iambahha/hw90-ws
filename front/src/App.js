@@ -1,109 +1,65 @@
-import React, {createRef} from 'react';
+import React, {Component, createRef} from 'react';
 
-class App extends React.Component {
+class App extends Component {
   state = {
-    text: '',
-    username: 'Anonymous',
-    messages: [],
-    coordinates: '',
+    squares: []
   };
 
   componentDidMount() {
-    this.websocket = new WebSocket('ws://localhost:8000/chat');
+    this.websocket = new WebSocket('ws://localhost:8000/square');
 
-    this.websocket.onmessage = (message) => {
+    this.websocket.onmessage = event => {
       try {
-        const data = JSON.parse(message.data);
-
-        if (data.type === 'NEW_MESSAGE') {
-          const newMessage = {
-            username: data.username,
-            text: data.text
-          };
-
-          this.setState({messages: [...this.state.messages, newMessage]})
-        } else if (data.type === 'LAST_MESSAGES') {
-          this.setState({messages: data.messages});
-        } else if (data.type === 'SEND_COORDINATES') {
-
+        const data = JSON.parse(event.data);
+        if (data.type === 'NEW_SQUARE') {
+          this.setState({
+            squares: [
+              ...this.state.squares,
+              data.squares
+            ]
+          })
+        } else if (data.type === 'ALL_SQUARES') {
+          this.setState({squares: data.squares});
         }
       } catch (e) {
         console.log('Something went wrong', e);
       }
-    };
 
+    }
   }
-
-  sendMessage = e => {
-    e.preventDefault();
-
-    const message = {
-      type: 'CREATE_MESSAGE',
-      text: this.state.text
-    };
-
-    this.websocket.send(JSON.stringify(message));
-  };
-
-  setUsername = e => {
-    e.preventDefault();
-
-    const message = {
-      type: 'SET_USERNAME',
-      username: this.state.username
-    };
-
-    this.websocket.send(JSON.stringify(message));
-  };
-  onCanvasClick = e => {
-    e.persist();
-
-    const canvas = this.canvas.current;
-
-    const ctx = canvas.getContext('2d');
-
-    const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-    const coord = [x, y];
-
-    ctx.fillStyle = 'aquamarine';
-    ctx.fillRect(x -5, y - 5, 10, 10);
-    console.log(JSON.stringify(coord));
-
-    const coordinates = {
-      type: 'SEND_COORDINATES',
-      text: this.state.coordinates
-    };
-
-    this.websocket.send(JSON.stringify(coordinates));
-
-  };
 
   canvas = createRef();
 
-  changeField = e => this.setState({[e.target.name]: e.target.value});
+  drawSquare = e => {
+    e.persist();
 
-  render() {
+    const x = e.nativeEvent.offsetX;
+    const y = e.nativeEvent.offsetY;
+
+    this.websocket.send(JSON.stringify({
+      type: 'CREATE_SQUARE',
+      squares: {
+        x: x,
+        y: y
+      }
+    }));
+  };
+
+  render () {
+    this.state.squares.forEach(square => {
+      const ctx = this.canvas.current.getContext('2d');
+      ctx.beginPath();
+      const pi = Math.PI;
+      ctx.fill();
+      ctx.strokeStyle = "green";
+      ctx.arc(square.x,square.y,10,0, 2*pi );
+      ctx.stroke();
+    });
+
     return (
-      <>
-        <form onSubmit={this.setUsername}>
-          <input type="text" value={this.state.username} name="username" onChange={this.changeField} />
-          <button type="submit">Set username!</button>
-        </form>
-        <form onSubmit={this.sendMessage}>
-          <input type="text" value={this.state.text} name="text" onChange={this.changeField} />
-          <button type="submit">Send message!</button>
-        </form>
-
-        {this.state.messages.map((msg, i) => (
-          <div key={i}>
-            <strong>{msg.username}: </strong>{msg.text}
-          </div>
-        ))}
-
-        <canvas width="1000" height="800" ref={this.canvas} onClick={this.onCanvasClick}/>
-      </>
+      <div style={{padding: '50px'}}>
+        <canvas ref={this.canvas} width="1200px" height="500px" style={{border: '1px solid black'}} onClick={this.drawSquare}/>
+      </div>
     );
   }
 }
